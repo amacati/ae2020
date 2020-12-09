@@ -8,7 +8,7 @@ function [z] = scan_sim(pose, map)
     %% Parsing of initialization arguments.
     p = inputParser;
     % Define validation expressions for each argument.
-    validPose = @(x) isnumeric(x) && all(size(x) == [1,3]);
+    validPose = @(x) isnumeric(x) && all(size(x) == [3,1]);
     validMap = @(x) isnumeric(x) && size(x,2) == 4;
     % Add the arguments to the input parser.
     addRequired(p,'pose',validPose);
@@ -21,9 +21,9 @@ function [z] = scan_sim(pose, map)
     %% Laser scanner parameters
     pos = pose(1:2);
     nBeams = 20;
-    maxRange = 1.5;
-    sigmaPos = 0;
-    sigmaTheta = 0;    
+    maxRange = 3;
+    sigmaPos = 0.005;
+    sigmaTheta = 0.001;    
     
     % Last value is the same as first -> increase nBeams and remove last theta.
     theta = mod(linspace(-pi,pi,nBeams+1)+pose(3)+pi,2*pi)-pi;  
@@ -32,7 +32,7 @@ function [z] = scan_sim(pose, map)
     
     %% Calculate the closest wall hit by the sensor
     z = Inf(2,nBeams);
-    distMap = map - repelem(pos,2);
+    distMap = map - repelem(pos',2);
     for i = 1:nBeams
         beam = beamVec(:,i);
         scaledDistMap = distMap ./ repelem(beam,2)';
@@ -40,7 +40,7 @@ function [z] = scan_sim(pose, map)
         % Check if coordinates of intersection are within limits, overwrite with Inf otherwise.
         limitMatrix = scaledDistMap .* flip(repelem(beam,2)');
         limitMatrix(limitMatrix > maxRange) = Inf;
-        limitMatrix = limitMatrix + flip(repelem(pos,2));
+        limitMatrix = limitMatrix + flip(repelem(pos',2));
         limitMask = false(size(distMap));    
         limitMask(:,1:2) = (limitMatrix(:,1:2) > map(:,3)) & (limitMatrix(:,1:2) < map(:,4));
         limitMask(:,3:4) = (limitMatrix(:,3:4) > map(:,1)) & (limitMatrix(:,3:4) < map(:,2));
@@ -52,8 +52,8 @@ function [z] = scan_sim(pose, map)
             z(2,i) = theta(i);
         end
     end
-    %% Add noise to the measurements if specified.
+    %% Add noise to the measurements if specified and correct angles.
     Sigma = diag([sigmaPos,sigmaTheta]);
     z = z + mvnrnd([0;0],Sigma,nBeams)';
-    z(2,:) = mod(z(2,:) + pi, 2*pi) - pi;
+    z(2,:) = mod(z(2,:) - pose(3) + pi, 2*pi) - pi;
     end

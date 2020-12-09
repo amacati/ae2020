@@ -1,12 +1,12 @@
-map = load_map(1);
-poses = [-0.45 0.5 0.5;1,1,2.5;0,0,0];
+map = load_map();
+poses = [3; 3; 1];
 
 %% Parameters of scan_sim function
 nBeams = 20;
-maxRange = 1.5;
+maxRange = 3;
 
 for pose = poses
-    pos = pose(1:2)';
+    pos = pose(1:2);
     theta = mod(linspace(-pi,pi,nBeams+1)+pose(3)+pi,2*pi)-pi;  
     theta = theta(1:end-1);
     beamVec = [cos(theta);sin(theta)];
@@ -30,7 +30,7 @@ for pose = poses
     end
     %% Perform measurement
     tic
-    z = scan_sim(pose', map);
+    z = scan_sim(pose, map);
     toc
     %% Plot results
     for measurement = z
@@ -42,6 +42,4 @@ for pose = poses
         end
     end
     hold off
-    pause
-    close
 end
