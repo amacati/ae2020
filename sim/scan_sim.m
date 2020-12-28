@@ -22,8 +22,8 @@ function [z] = scan_sim(pose, map)
     pos = pose(1:2);
     nBeams = 20;
     maxRange = 3;
-    sigmaPos = 0.005;
-    sigmaTheta = 0.001;    
+    sigmaPos = 0;  %0.005;
+    sigmaTheta = 0;  %0.001;    
     
     % Last value is the same as first -> increase nBeams and remove last theta.
     theta = mod(linspace(-pi,pi,nBeams+1)+pose(3)+pi,2*pi)-pi;  
@@ -32,24 +32,24 @@ function [z] = scan_sim(pose, map)
     
     %% Calculate the closest wall hit by the sensor
     z = Inf(2,nBeams);
-    distMap = map - repelem(pos',2);
+    z(2,:) = theta;
+    distMap = map - repelem(pos',2);  % Orthogonal distances from robot position to the x and y coordinates of walls.
     for i = 1:nBeams
-        beam = beamVec(:,i);
-        scaledDistMap = distMap ./ repelem(beam,2)';
-        scaledDistMap(scaledDistMap > maxRange | scaledDistMap <= 0) = Inf;
-        % Check if coordinates of intersection are within limits, overwrite with Inf otherwise.
+        beam = beamVec(:,i);  % Current beam basis vector.
+        scaledDistMap = distMap ./ repelem(beam,2)';  % Scale distances from walls with basis vector to account for angle.
+        scaledDistMap(scaledDistMap > maxRange | scaledDistMap <= 0) = Inf;  % Out of reach intersections.
+        % Check if coordinates of intersection are within wall limits, overwrite with Inf otherwise.
         limitMatrix = scaledDistMap .* flip(repelem(beam,2)');
         limitMatrix(limitMatrix > maxRange) = Inf;
         limitMatrix = limitMatrix + flip(repelem(pos',2));
-        limitMask = false(size(distMap));    
-        limitMask(:,1:2) = (limitMatrix(:,1:2) > map(:,3)) & (limitMatrix(:,1:2) < map(:,4));
+        limitMask = false(size(distMap));
+        limitMask(:,1:2) = (limitMatrix(:,1:2) > map(:,3)) & (limitMatrix(:,1:2) < map(:,4));  % Check if hits are within limits defined in map
         limitMask(:,3:4) = (limitMatrix(:,3:4) > map(:,1)) & (limitMatrix(:,3:4) < map(:,2));
         scaledDistMap(~limitMask) = Inf;
         % Take the closest wall as measurement if possible.
         minDist = min(min(scaledDistMap));
         if minDist < z(1,i)
             z(1,i) = minDist;
-            z(2,i) = theta(i);
         end
     end
     %% Add noise to the measurements if specified and correct angles.
