@@ -1,5 +1,5 @@
 map = load_map();
-pose = [3; 1; 2];
+pose = [3; 3; 2];
 X = [pose(:);0.5];
 pos = pose(1:2);
 % Settings
