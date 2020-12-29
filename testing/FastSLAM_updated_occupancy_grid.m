@@ -41,22 +41,22 @@ if doPlot
     hold off
 end
 
-M = zeros(1,100,120);
+M = zeros(140,160,1);
 [~, idx] = max(X(4,:));  % Most likely map.
 figure;
 colormap(gray(201));
 % Previous map version
 subplot(1,2,1);
-priorMap = image([0,12], [10,0], mat2gray(squeeze(M(idx,:,:)),[-127,127])*255, 'AlphaData', 1, 'CDataMapping', 'direct');
+priorMap = image([0,12], [10,0], mat2gray(-squeeze(M(:,:,idx)),[-127,127])*255, 'AlphaData', 1, 'CDataMapping', 'direct');
 
 % Process scan
-M = updated_occupancy_grid(X,z,M);
+M = updated_occupancy_grid(X,z,M,1:size(X,2));
 hitZ = z(:,z(1,:) ~= inf);
 thetaZ = mod(hitZ(2,:) + pose(3) + pi, 2*pi) - pi;
 hitPos = [cos(thetaZ);sin(thetaZ)].*hitZ(1,:) + pos;
 hitPos = int8(hitPos*10)+1;
-M(sub2ind(size(M),ones(1,size(hitPos,2)),hitPos(2,:),hitPos(1,:))) = -100;
+M(sub2ind(size(M),hitPos(2,:),hitPos(1,:),ones(1,size(hitPos,2)))) = 100;
 
 % Posterior map
 subplot(1,2,2);
-posteriorMap = image([0,12], [10,0], mat2gray(squeeze(M(idx,:,:)),[-127,127])*255, 'AlphaData', 1, 'CDataMapping', 'direct');
+posteriorMap = image([0,12], [10,0], mat2gray(-squeeze(M(:,:,idx)),[-127,127])*255, 'AlphaData', 1, 'CDataMapping', 'direct');
