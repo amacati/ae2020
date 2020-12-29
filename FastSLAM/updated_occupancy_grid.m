@@ -1,10 +1,13 @@
-function [M] = updated_occupancy_grid(X,z,M)
+function [mTgt] = updated_occupancy_grid(X,z,M, sampleIdx)
 %UPDATED_OCCUPANCY_GRID Summary of this function goes here
 %   Input:      X                   4xM Particles
 %               z                   2xNScans Measurements
 %               M                   Mx100x120 Particle Maps
+%               sampleIdx           1xM Indices of future resampled
+%                                   particles. Only compute map once for
+%                                   each index.
 %
-%   Output:     M                   Mx100x120 Updated particle maps
+%   Output:     mTgt                Mx100x120 Updated particle maps
 %
 %   Optimization: Make sure to call updated_occupancy_grid only if
 %   particle gets resampled, compute only once for each particle!
@@ -13,41 +16,50 @@ function [M] = updated_occupancy_grid(X,z,M)
     % Define validation expressions for each argument.
     validParticles = @(x) isnumeric(x) && size(x,1) == 4;
     validScan = @(x) isnumeric(x) && size(x,1) == 2;
-    validMaps = @(x) isnumeric(x);
+    validMaps = @(x) isnumeric(x) && size(x,1) == size(X,2);
+    validSampleIdx = @(x) isnumeric(x) && all(size(x) == [1,size(X,2)]);
     % Add the arguments to the input parser.
     addRequired(p,'X',validParticles);
     addRequired(p,'z',validScan);
     addRequired(p,'M',validMaps);
+    addRequired(p,'sampleIdx',validSampleIdx);
     % Parse all arguments.
-    parse(p, X, z, M);
+    parse(p, X, z, M, sampleIdx);
     X = p.Results.X;
     z = p.Results.z;
     M = p.Results.M;
-
+    sampleIdx = p.Results.sampleIdx;
     %% Constants
     mapScaling = 10;
     maxRange = 3;
     rayCastingThreshold = 0.1;
     %% Tunable parameters
-    maxDeviation = 0.1;     
     lZero = log(0.2);       
-    lOcc = log(0.000000001);
-    lFree = log(2000000000);
-    %% Inverse sensor model
+    lOcc = log(2000000000);
+    lFree = log(0.000000001);
+    %% Inverse sensor model applied to maps
+    % Only update resampled maps, copy others from previously computed maps
+    totalIdx = 1:size(X, 2);
+    [originLoc, targetLoc, ~] = unique(sampleIdx);
+    mTgt = M;
     % Loop over all particle maps and update values.
-    for particleIdx = 1:size(X,2)
+    for particleIdx = 1:size(originLoc,2)
+        % Target index is the map to write the update to, origin index is
+        % the unique previous map ID.
+        targetIdx = targetLoc(particleIdx);
+        originIdx = originLoc(particleIdx);
         pPosX = X(1,particleIdx);
         pPosY = X(2,particleIdx);
-        omega = X(3,particleIdx);
+        theta = X(3,particleIdx);
         % Cut map window for position
         xMinIdx = round(max(0,(pPosX-maxRange))*mapScaling);
-        xMaxIdx = round(min(119,(pPosX+maxRange)*mapScaling));
+        xMaxIdx = round(min(159,(pPosX+maxRange)*mapScaling));
         yMinIdx = round(max(0,(pPosY-maxRange))*mapScaling);
-        yMaxIdx = round(min(99,(pPosY+maxRange)*mapScaling));
+        yMaxIdx = round(min(139,(pPosY+maxRange)*mapScaling));
         x = (repmat(xMinIdx:xMaxIdx,size(yMinIdx:yMaxIdx,2),1)+0.5)/mapScaling;
         y = (repmat((yMaxIdx:-1:yMinIdx)',1,size(xMinIdx:xMaxIdx,2))+0.5)/mapScaling;
         r = sqrt((x-pPosX).^2 + (y-pPosY).^2);
-        phi = atan2(y-pPosY,x-pPosX) - omega;
+        phi = atan2(y-pPosY,x-pPosX) - theta;
         % Stack angles in third dimension to compute minimum angle values
         % for all pixels simultaneously.
         zCell = num2cell(z(2,:));
@@ -68,7 +80,13 @@ function [M] = updated_occupancy_grid(X,z,M)
         % Update the selected map section. Y and X are inverted in M.
         cutIdxX = int16(xMinIdx:xMaxIdx) + 1;
         cutIdxY = int16(yMinIdx:yMaxIdx) + 1;
-        M(particleIdx,cutIdxY,cutIdxX) = M(particleIdx,cutIdxY,cutIdxX) + reshape(flip(mapUpdate,1),[1,size(flip(mapUpdate,1))]) - lZero;
+        mTgt(targetIdx,cutIdxY,cutIdxX) = M(originIdx,cutIdxY,cutIdxX) + reshape(flip(mapUpdate,1),[1,size(flip(mapUpdate,1))]) - lZero;
+    end
+    
+    % Copy maps that are already computed into the correct target indices.
+    for targetIdx = totalIdx(~ismember(totalIdx,targetLoc))
+        originIdx = sampleIdx(targetIdx);
+        mTgt(targetIdx,:,:) = mTgt(originIdx,:,:);
     end
     
 end

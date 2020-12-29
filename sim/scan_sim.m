@@ -17,7 +17,7 @@ function [z] = scan_sim(pose, map)
     parse(p, pose, map);
     pose = p.Results.pose;
     map = p.Results.map;
-    
+
     %% Laser scanner parameters
     pos = pose(1:2);
     nBeams = 20;

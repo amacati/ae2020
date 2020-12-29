@@ -1,8 +1,8 @@
 function [waypoints] = load_waypoints(varargin)
 %LOAD_WAYPOINTS Summary of this function goes here
 %   Detailed explanation goes here
-waypoints = [10.5 6;11 3; 10.5 6; 11 8; 9 9; 6 8.5; 5.5 7; 5.5 4;
-             5.7 2; 4 1; 2 1; 1 3; 2 6; 6 6; 7.5 5.5; 6 6]';
+waypoints = [12.5 8;13 5; 12.5 8; 13 10; 11 11; 8 10.5; 7.5 9; 7.5 6;
+             7.7 4; 6 3; 4 3; 3 5; 4 8; 8 8; 9.5 7.5; 8 8]';
 
 t = linspace(0,1,200);
 

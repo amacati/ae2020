@@ -23,11 +23,11 @@ function [X_bar] = sample_motion_model(v,omega,X)
     
     %% Motion model sample
     M = size(X,2);
-    R = [1 0 0;0 1 0;0 0 1]*1e-2;     % covariance matrix of motion model | shape 3X3
+    R = [1 0 0;0 1 0;0 0 0.1]*1e-8;     % covariance matrix of motion model | shape 3X3
     delta_t = 0.1;                     % delta_t is always 0.1 in the sim.
     
-    X_bar = zeros(size(X));
-    X_bar(1:2,:) = X(1:2,:) + delta_t*v*[cos(omega);sin(omega)];
+    X_bar = X;
+    X_bar(1:2,:) = X(1:2,:) + delta_t*v*[cos(X(3,:));sin(X(3,:))];
     X_bar(3,:) = X(3,:) + delta_t*omega;
     X_bar(1:3,:) = X_bar(1:3,:) + mvnrnd([0;0;0],R,M)';
     X_bar(3,:) = mod(X_bar(3,:)+pi,2*pi) - pi;
