@@ -2,12 +2,12 @@ function [mTgt] = updated_occupancy_grid(X,z,M, sampleIdx)
 %UPDATED_OCCUPANCY_GRID Summary of this function goes here
 %   Input:      X                   4xM Particles
 %               z                   2xNScans Measurements
-%               M                   Mx100x120 Particle Maps
+%               M                   140x160xM Particle Maps
 %               sampleIdx           1xM Indices of future resampled
 %                                   particles. Only compute map once for
 %                                   each index.
 %
-%   Output:     mTgt                Mx100x120 Updated particle maps
+%   Output:     mTgt                140x160xM Updated particle maps
 %
 %   Optimization: Make sure to call updated_occupancy_grid only if
 %   particle gets resampled, compute only once for each particle!
@@ -16,7 +16,7 @@ function [mTgt] = updated_occupancy_grid(X,z,M, sampleIdx)
     % Define validation expressions for each argument.
     validParticles = @(x) isnumeric(x) && size(x,1) == 4;
     validScan = @(x) isnumeric(x) && size(x,1) == 2;
-    validMaps = @(x) isnumeric(x) && size(x,1) == size(X,2);
+    validMaps = @(x) isnumeric(x) && size(x,3) == size(X,2);
     validSampleIdx = @(x) isnumeric(x) && all(size(x) == [1,size(X,2)]);
     % Add the arguments to the input parser.
     addRequired(p,'X',validParticles);
@@ -80,13 +80,13 @@ function [mTgt] = updated_occupancy_grid(X,z,M, sampleIdx)
         % Update the selected map section. Y and X are inverted in M.
         cutIdxX = int16(xMinIdx:xMaxIdx) + 1;
         cutIdxY = int16(yMinIdx:yMaxIdx) + 1;
-        mTgt(targetIdx,cutIdxY,cutIdxX) = M(originIdx,cutIdxY,cutIdxX) + reshape(flip(mapUpdate,1),[1,size(flip(mapUpdate,1))]) - lZero;
+        mTgt(cutIdxY,cutIdxX,targetIdx) = M(cutIdxY,cutIdxX,originIdx) + reshape(flip(mapUpdate,1),[size(mapUpdate),1]) - lZero;
     end
     
     % Copy maps that are already computed into the correct target indices.
     for targetIdx = totalIdx(~ismember(totalIdx,targetLoc))
         originIdx = sampleIdx(targetIdx);
-        mTgt(targetIdx,:,:) = mTgt(originIdx,:,:);
+        mTgt(:,:,targetIdx) = mTgt(:,:,originIdx);
     end
     
 end

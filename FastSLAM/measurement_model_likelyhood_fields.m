@@ -37,7 +37,7 @@ function [X] = measurement_model_likelyhood_fields(X,z,M)
         pTheta = X(2,particleIdx);
         % Calculate indices of occupied cells.
         tic
-        currMap = squeeze(M(particleIdx,:,:));
+        currMap = squeeze(M(:,:,particleIdx));
         tTot = tTot + toc;
         tic
         [row,col] = find(currMap>0);
@@ -67,7 +67,6 @@ function [X] = measurement_model_likelyhood_fields(X,z,M)
         % Sum of probabilities at measurements
         X(4,particleIdx) = pZHit^(size(dMin,2))*prod(normpdf(dMin, 0,sigma))*pZUnknown^nUnknownScans*pZOutlier^nInvalid;
     end
-    fprintf("Reshaping time: %f, Find time: %f\n\n",tTot, tFind);
     X(4,:) = X(4,:) / sum(X(4,:));
 end
 
