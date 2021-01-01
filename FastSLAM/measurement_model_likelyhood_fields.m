@@ -2,7 +2,7 @@ function [X] = measurement_model_likelyhood_fields(X,z,M)
 %MEASUREMENT_MODEL_MAP Summary of this function goes here
 %   Input:      X                   4xM Particles
 %               z                   2xNScans Measurements
-%               M                   Mx140x160 Particle Maps
+%               M                   140x160xM Particle Maps
 %
 %   Output:     X                   4xM Updated particles weights with measurement
     %% Parsing of initialization arguments.
@@ -21,27 +21,21 @@ function [X] = measurement_model_likelyhood_fields(X,z,M)
     z = p.Results.z;
     M = p.Results.M;
     %% Function config
-    sigma = 0.4;  % Might need tuning!
+    sigma = 0.15;  % Might need tuning!
     mapScaling = 10;
-    pZHit = 0.4;
-    pZUnknown = 0.1;
+    pZHit = 0.5;
+    pZUnknown = 0.3;
     pZOutlier = 0.01;
 
-    tTot = 0;
-    tFind = 0;
     %% Likelyhood fields
     for particleIdx = 1:size(X,2)
-        tic
         pPosX = X(1,particleIdx);
         pPosY = X(2,particleIdx);
-        pTheta = X(2,particleIdx);
+        pTheta = X(3,particleIdx);
         % Calculate indices of occupied cells.
-        tic
         currMap = squeeze(M(:,:,particleIdx));
-        tTot = tTot + toc;
-        tic
+
         [row,col] = find(currMap>0);
-        tFind = tFind + toc;
         xOcc = (col-0.5)/mapScaling;
         yOcc = (row-0.5)/mapScaling;
         
@@ -55,17 +49,24 @@ function [X] = measurement_model_likelyhood_fields(X,z,M)
         nInvalid = sum(scanIdx(1,:)>160 | scanIdx(2,:)>140 | scanIdx(1,:)<1 | scanIdx(2,:)<1);
         scanIdx = scanIdx(:,scanIdx(1,:)<=160 & scanIdx(2,:)<=140 & scanIdx(1,:)>0 & scanIdx(2,:)>0);
         
-        % Filter out scans in unknown regions of the map. These
-        % measurements get a constant probability.
+        % Save scan values to recognize unknown regions of the map later
+        % on for special treatment.
         scanVal = currMap(sub2ind(size(currMap),scanIdx(2,:),scanIdx(1,:)));
-        nUnknownScans = sum(scanVal == 0);
-        
-        % Reduce number of distance calculations by omitting scans within
-        % unknown regions. 
-        scanPos = scanPos(:,scanVal ~= 0);
+
+        % Calculate minimum distance of all measurements to an occupied
+        % grid cell.
         dMin = min(sqrt((xOcc-scanPos(1,:)).^2 + (yOcc-scanPos(2,:)).^2));
-        % Sum of probabilities at measurements
-        X(4,particleIdx) = pZHit^(size(dMin,2))*prod(normpdf(dMin, 0,sigma))*pZUnknown^nUnknownScans*pZOutlier^nInvalid;
+        % In case the map was empty, assume infinite distances.
+        if isempty(row)
+            dMin = inf(1,size(scanPos,2));
+        end
+        % Sum of probabilities at measurements. If unexplored cells have
+        % higher probability with dMin calculation, take the highest
+        % probability.
+        probVec = normpdf(dMin,0,sigma);
+        nUnknownScans = sum(~((pZHit*probVec > pZUnknown) & scanVal == 0 | scanVal ~= 0));
+        probVec = probVec((pZHit*probVec > pZUnknown) & scanVal == 0 | scanVal ~= 0);
+        X(4,particleIdx) = pZHit^(size(probVec,2))*prod(probVec)*pZUnknown^nUnknownScans*pZOutlier^nInvalid;
     end
     X(4,:) = X(4,:) / sum(X(4,:));
 end

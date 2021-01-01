@@ -20,13 +20,11 @@ function [z] = scan_sim(pose, map)
 
     %% Laser scanner parameters
     pos = pose(1:2);
-    nBeams = 20;
+    nBeams = 50;
     maxRange = 3;
-    sigmaPos = 0;  %0.005;
-    sigmaTheta = 0;  %0.001;    
     
     % Last value is the same as first -> increase nBeams and remove last theta.
-    theta = mod(linspace(-pi,pi,nBeams+1)+pose(3)+pi,2*pi)-pi;  
+    theta = mapAngle(linspace(-pi,pi,nBeams+1)+pose(3));  
     theta = theta(1:end-1);
     beamVec = [cos(theta);sin(theta)];
     
@@ -52,8 +50,5 @@ function [z] = scan_sim(pose, map)
             z(1,i) = minDist;
         end
     end
-    %% Add noise to the measurements if specified and correct angles.
-    Sigma = diag([sigmaPos,sigmaTheta]);
-    z = z + mvnrnd([0;0],Sigma,nBeams)';
-    z(2,:) = mod(z(2,:) - pose(3) + pi, 2*pi) - pi;
+    z(2,:) = mapAngle(z(2,:) - pose(3));
     end

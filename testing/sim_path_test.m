@@ -1,5 +1,6 @@
 map = load_map();
-p = load_waypoints();
+p = load_waypoints(2);
+disp(p)
 t = linspace(0,1,200);
 nSplines = size(p,2)-3;
 
