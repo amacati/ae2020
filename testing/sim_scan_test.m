@@ -2,7 +2,7 @@ map = load_map();
 poses = [3; 3; 1];
 
 %% Parameters of scan_sim function
-nBeams = 20;
+nBeams = 50;
 maxRange = 3;
 
 for pose = poses
