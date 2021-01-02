@@ -47,6 +47,7 @@ function [X] = measurement_model_likelyhood_fields(X,z,M)
         
         % Filter out out of range subscripts, assign invalid probability.
         nInvalid = sum(scanIdx(1,:)>160 | scanIdx(2,:)>140 | scanIdx(1,:)<1 | scanIdx(2,:)<1);
+        scanPos = scanPos(:,scanIdx(1,:)<=160 & scanIdx(2,:)<=140 & scanIdx(1,:)>0 & scanIdx(2,:)>0);
         scanIdx = scanIdx(:,scanIdx(1,:)<=160 & scanIdx(2,:)<=140 & scanIdx(1,:)>0 & scanIdx(2,:)>0);
         
         % Save scan values to recognize unknown regions of the map later
